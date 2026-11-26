@@ -14,6 +14,7 @@ namespace EmotionalEntity.EditorTools
         const string Root = "Assets/EmotionalEntity/Generated";
         const string MvrManagerPrefab = "Packages/com.middlevr/MVRManager.prefab";
         const string MvrInputPrefab = "Packages/com.middlevr.inputsystem/MVRInputSystem.prefab";
+        const string MvrUrpPrefab = "Packages/com.middlevr.urp/MVR_URP.prefab";
         const string TargetUnity = "6000.2.8f1";
 
         // ---------------------------------------------------------------- 1. Check
@@ -51,7 +52,12 @@ namespace EmotionalEntity.EditorTools
 
             bool mvr = AssetDatabase.LoadAssetAtPath<GameObject>(MvrManagerPrefab) != null;
             sb.Append(mvr ? "OK    MiddleVR installed" : "INFO  MiddleVR not installed (needed only for the CAVE scene)").AppendLine();
-            if (mvr) line(FindType("MiddleVR.Unity.URP.MVR_URPSettings") != null, "MiddleVR URP package installed", "com.middlevr.urp missing. Install it with com.middlevr.");
+            if (mvr)
+            {
+                line(AssetDatabase.LoadAssetAtPath<GameObject>(MvrUrpPrefab) != null, "MiddleVR URP package installed", "com.middlevr.urp missing. Install it with com.middlevr.");
+                bool win = Application.platform == RuntimePlatform.WindowsEditor;
+                sb.Append(win ? "OK    Windows: the CAVE scene can run here" : "INFO  Not Windows: the CAVE scene cannot run here (MiddleVR is Windows only). Use the Desktop scene.").AppendLine();
+            }
 
             sb.AppendLine();
             sb.AppendLine("Cannot be checked from Unity: bHaptics Player running with the vest paired, and the app linked in bHaptics > Developer Window.");
@@ -94,19 +100,26 @@ namespace EmotionalEntity.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             AddLightAndEnvironment();
 
-            // MiddleVR copies this camera for every wall and eye. Its own position does not matter.
+            // MiddleVR copies this camera for every wall and eye, and with "Attach To Camera" (on by default) it also
+            // parents its whole CAVE (SystemCenter, HeadNode, wall cameras) under this camera. So this camera must sit
+            // exactly at the world origin, or the whole CAVE is shifted by its position.
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             Camera cam = camGo.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.01f, 0.012f, 0.02f);
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 200f;
-            camGo.transform.position = new Vector3(0f, 1.65f, 0f);
+            camGo.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            Type urpCamData = FindType("UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
+            if (urpCamData != null) camGo.AddComponent(urpCamData); // avoids URP's "additional camera data" warning
 
             var mvr = (GameObject)PrefabUtility.InstantiatePrefab(mvrPrefab);
-            Type urpSettings = FindType("MiddleVR.Unity.URP.MVR_URPSettings");
-            if (urpSettings != null) mvr.AddComponent(urpSettings);
-            else Debug.LogWarning("[Prototype] com.middlevr.urp not found. Install it, or URP walls may render without warping.");
+            mvr.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            // MiddleVR looks for a separate object named "MVR_URP" (its own prefab). It sets up URP rendering for
+            // the walls, including the head-tracked projection. Without it the walls can show but not follow the head.
+            var urpPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MvrUrpPrefab);
+            if (urpPrefab != null) PrefabUtility.InstantiatePrefab(urpPrefab);
+            else Debug.LogWarning("[Prototype] " + MvrUrpPrefab + " not found. Install com.middlevr.urp and build this scene again.");
 
             var inputPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MvrInputPrefab);
             if (inputPrefab != null) PrefabUtility.InstantiatePrefab(inputPrefab);
@@ -168,8 +181,12 @@ namespace EmotionalEntity.EditorTools
         {
             string path = Root + "/" + name + ".unity";
             EditorSceneManager.SaveScene(scene, path);
+            // A build starts with the first enabled scene. Make the scene just built the only enabled prototype scene,
+            // so a CAVE build never starts in the Desktop scene by accident.
             var list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             list.RemoveAll(s => s.path == path);
+            foreach (EditorBuildSettingsScene s in list)
+                if (s.path.StartsWith(Root + "/EmotionalEntity_")) s.enabled = false;
             list.Insert(0, new EditorBuildSettingsScene(path, true));
             EditorBuildSettings.scenes = list.ToArray();
             AssetDatabase.Refresh();

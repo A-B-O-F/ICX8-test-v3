@@ -7,7 +7,9 @@ namespace EmotionalEntity
     public enum HapticKind { Simulated, Bhaptics }
 
     /// <summary>The one component in the scene. It builds the whole prototype when Play starts.
-    /// Every setting below is also shown on the "Prototype" object in the Inspector.</summary>
+    /// Every setting below is also shown on the "Prototype" object in the Inspector.
+    /// Runs before MiddleVR so that on a Mac it can switch MiddleVR off before MiddleVR tries to load its Windows libraries.</summary>
+    [DefaultExecutionOrder(-10000)]
     public class PrototypeBootstrap : MonoBehaviour
     {
         [Header("Display and tracking")]
@@ -51,6 +53,32 @@ namespace EmotionalEntity
 
         public EntityController Controller { get { return controller; } }
 
+        static readonly string[] MiddleVrObjects = { "MVRManager", "MVRInputSystem", "MVR_URP" };
+
+        void Awake()
+        {
+            if (display != DisplayMode.MiddleVR) return;
+            bool windows = Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer;
+            if (windows) return;
+            // MiddleVR only ships Windows libraries. Turn off every MiddleVR object before its Awake runs, then use Desktop mode.
+            int off = 0;
+            foreach (string n in MiddleVrObjects)
+            {
+                GameObject go = GameObject.Find(n);
+                if (go != null) { go.SetActive(false); off++; }
+            }
+            // Also catch MiddleVR components on objects with other names.
+            foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (mb == null || mb.gameObject == gameObject) continue;
+                Type t = mb.GetType();
+                bool mvr = (t.Namespace != null && t.Namespace.StartsWith("MiddleVR")) || t.Name.StartsWith("MVR");
+                if (mvr && mb.gameObject.activeSelf) { mb.gameObject.SetActive(false); off++; }
+            }
+            Debug.LogWarning("[Prototype] This is the CAVE scene, and MiddleVR runs on Windows only. MiddleVR is switched off for this run; " +
+                "using Desktop mode with keyboard tracking. On a Mac, use the EmotionalEntity_Desktop scene. (" + off + " MiddleVR objects switched off)");
+        }
+
         void Start()
         {
             if (conditions == null || conditions.Length == 0)
@@ -61,8 +89,9 @@ namespace EmotionalEntity
 
             if (display == DisplayMode.MiddleVR && !MiddleVrInScene())
             {
-                Debug.LogError("[Prototype] Display is MiddleVR but no MVRManager is in the scene (or MiddleVR is not installed). " +
-                    "MiddleVR runs on Windows only. Falling back to Desktop with keyboard tracking.");
+                bool windows = Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer;
+                if (windows) Debug.LogError("[Prototype] Display is MiddleVR but no active MVRManager is in the scene. If this is a built program, " +
+                    "start it with --config <your .vrx>, otherwise MiddleVR turns itself off. Falling back to Desktop with keyboard tracking.");
                 if (Camera.main != null) Camera.main.gameObject.SetActive(false); // the MiddleVR template camera
                 display = DisplayMode.Desktop;
             }
@@ -119,6 +148,10 @@ namespace EmotionalEntity
 
         static void WarnIfSystemCenterMoved()
         {
+            GameObject mgr = GameObject.Find("MVRManager");
+            if (mgr != null && mgr.transform.position.sqrMagnitude > 1e-4f)
+                Debug.LogWarning("[Prototype] MVRManager is at " + mgr.transform.position + ", not the world origin. With 'Attach To Camera' MiddleVR " +
+                    "puts the whole CAVE under the first camera, so set Main Camera Position and Rotation to 0 (or untick Attach To Camera).");
             GameObject sc = GameObject.Find("SystemCenter");
             if (sc != null && (sc.transform.position.sqrMagnitude > 1e-6f || Quaternion.Angle(sc.transform.rotation, Quaternion.identity) > 0.01f))
                 Debug.LogWarning("[Prototype] SystemCenter is not at the world origin. Entity home and the safety area are in world " +
