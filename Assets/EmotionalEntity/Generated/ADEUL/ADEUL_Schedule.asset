@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0839d3b6f28734dddb4c536d83ce3a75, type: 3}
+  m_Name: ADEUL_Schedule
+  m_EditorClassIdentifier: EmotionalEntity.Runtime::EmotionalEntity.ContactSchedule
+  pattern: 2
+  firstDelay: 1.5
+  interval: 5
+  jitter: 0.1
+  contactDuration: 0.3
+  maxContacts: 0
+  burstCount: 3
+  burstInterval: 1
+  escalationRate: 0.1
+  minInterval: 2
+  envelopSeconds: 1.8
+  holdSeconds: 4
+  releaseSeconds: 1.2

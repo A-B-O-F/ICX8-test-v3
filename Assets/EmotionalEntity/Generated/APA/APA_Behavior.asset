@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6913a5686cca4415ab7ae63b2e0a25ed, type: 3}
+  m_Name: APA_Behavior
+  m_EditorClassIdentifier: EmotionalEntity.Runtime::EmotionalEntity.BehaviorProfile
+  trigger: 1
+  gesture: 1
+  territoryRadius: 2
+  proximityRadius: 1.5
+  approachSpeed: 1.2
+  trajectory: 0
+  contactDistance: 0.18
+  approachTimeout: 12
+  maxChaseDistance: 0
+  breakDistance: 0.45
+  hugBreakSpeed: 1.1
+  retreatSpeed: 1.5
+  retreatDistance: 1.2
+  retreatToHome: 1
+  handReaction: 3
+  handForce: 0.16

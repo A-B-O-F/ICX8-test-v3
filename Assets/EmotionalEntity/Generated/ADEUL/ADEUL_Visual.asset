@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f53f70b58945241c6a0f796f5b6ff157, type: 3}
+  m_Name: ADEUL_Visual
+  m_EditorClassIdentifier: EmotionalEntity.Runtime::EmotionalEntity.VisualProfile
+  radius: 0.55
+  cohesion: 0.35
+  verticalStretch: 1
+  droop: 0
+  turbulence: 0.4
+  flowFrequency: 2.4
+  flowSpeed: 0.7
+  pulseRate: 1.3
+  pulseDepth: 0.14
+  pulseScatter: 3.5
+  detailCount: 80000
+  volumeCount: 500
+  detailSize: 0.008
+  detailOpacity: 0.08
+  volumeSize: 0.32
+  volumeOpacity: 0.03
+  additive: 0.75
+  brightness: 1.2
+  colorA: {r: 0.62, g: 0.95, b: 0.2, a: 1}
+  colorB: {r: 0.95, g: 0.5, b: 0.95, a: 1}
+  streamFraction: 0.35
+  streamSpeed: 1.2
+  streamTipRadius: 0.035
+  hugRadius: 0.42
+  hugHeight: 0.9
+  hugFrontClear: 35
+  headClearance: 0.28

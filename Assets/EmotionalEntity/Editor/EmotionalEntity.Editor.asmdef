@@ -1,0 +1,1 @@
+{ "name": "EmotionalEntity.Editor", "references": ["EmotionalEntity.Runtime"], "includePlatforms": ["Editor"] }

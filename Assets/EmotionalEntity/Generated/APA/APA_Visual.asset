@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f53f70b58945241c6a0f796f5b6ff157, type: 3}
+  m_Name: APA_Visual
+  m_EditorClassIdentifier: EmotionalEntity.Runtime::EmotionalEntity.VisualProfile
+  radius: 0.55
+  cohesion: 0.45
+  verticalStretch: 1
+  droop: 0
+  turbulence: 0.75
+  flowFrequency: 3.2
+  flowSpeed: 1.5
+  pulseRate: 2.6
+  pulseDepth: 0.22
+  pulseScatter: 2.5
+  detailCount: 80000
+  volumeCount: 500
+  detailSize: 0.008
+  detailOpacity: 0.14
+  volumeSize: 0.3
+  volumeOpacity: 0.03
+  additive: 0.75
+  brightness: 1.5
+  colorA: {r: 1, g: 0.16, b: 0.05, a: 1}
+  colorB: {r: 1, g: 0.72, b: 0.42, a: 1}
+  streamFraction: 0.6
+  streamSpeed: 2.4
+  streamTipRadius: 0.025
+  hugRadius: 0.36
+  hugHeight: 0.9
+  hugFrontClear: 35
+  headClearance: 0.28
