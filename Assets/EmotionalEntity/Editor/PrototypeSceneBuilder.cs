@@ -13,7 +13,6 @@ namespace EmotionalEntity.EditorTools
     {
         const string Root = "Assets/EmotionalEntity/Generated";
         const string MvrManagerPrefab = "Packages/com.middlevr/MVRManager.prefab";
-        const string MvrInputPrefab = "Packages/com.middlevr.inputsystem/MVRInputSystem.prefab";
         const string MvrUrpPrefab = "Packages/com.middlevr.urp/MVR_URP.prefab";
         const string TargetUnity = "6000.2.8f1";
 
@@ -121,9 +120,8 @@ namespace EmotionalEntity.EditorTools
             if (urpPrefab != null) PrefabUtility.InstantiatePrefab(urpPrefab);
             else Debug.LogWarning("[Prototype] " + MvrUrpPrefab + " not found. Install com.middlevr.urp and build this scene again.");
 
-            var inputPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MvrInputPrefab);
-            if (inputPrefab != null) PrefabUtility.InstantiatePrefab(inputPrefab);
-            else Debug.LogWarning("[Prototype] com.middlevr.inputsystem not found.");
+            // MVRInputSystem is for multi-PC clusters. On one PC it replaces Unity's keyboard with one that only
+            // MiddleVR feeds, which can leave the operator keys dead, so it is not added. Keys come from OperatorKeys.
 
             var boot = new GameObject("Prototype").AddComponent<PrototypeBootstrap>();
             boot.conditions = conditions;

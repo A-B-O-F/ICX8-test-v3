@@ -33,6 +33,7 @@ namespace EmotionalEntity
             cam.backgroundColor = new Color(0.01f, 0.012f, 0.02f);
             cam.fieldOfView = 70f;
             go.AddComponent<AudioListener>();
+            AddUrpCameraData(go);
 
             // Seen from inside in first person, so its back faces are culled and it stays invisible there.
             standIn = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -41,6 +42,18 @@ namespace EmotionalEntity
             standIn.transform.localScale = new Vector3(0.42f, 0.85f, 0.26f);
             Collider c = standIn.GetComponent<Collider>();
             if (c != null) Object.Destroy(c);
+        }
+
+        /// <summary>URP wants its own camera component on every camera; added by name so no URP reference is needed.</summary>
+        static void AddUrpCameraData(GameObject go)
+        {
+            foreach (System.Reflection.Assembly asm in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                System.Type t = asm.GetType("UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
+                if (t == null) continue;
+                if (go.GetComponent(t) == null) go.AddComponent(t);
+                return;
+            }
         }
 
         public void UpdateViewer(Pose head, Pose torso)

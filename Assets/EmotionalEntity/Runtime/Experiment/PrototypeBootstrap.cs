@@ -29,6 +29,15 @@ namespace EmotionalEntity
         public Vector3 arenaMin = new Vector3(-1.5f, 0f, -1.5f);
         public Vector3 arenaMax = new Vector3(1.5f, 2.6f, 1.5f);
         [Range(0f, 1f)] public float safetyMargin = 0.3f;
+        [Tooltip("Untick to test without the safety area (for example before its values are known). Contacts then never pause near a wall.")]
+        public bool enableSafetyArea = true;
+        [Tooltip("A tracker node that has not moved at all for this long counts as lost. 0 = never.")]
+        [Range(0f, 10f)] public float nodeLostAfterSeconds = 1.5f;
+
+        [Header("CAVE operator status (3D text on the walls; F1 shows/hides)")]
+        public bool showStatusAtStart = true;
+        public Vector3 statusBoardPosition = new Vector3(0f, 2.1f, 1.4f);
+        [Range(-180f, 180f)] public float statusBoardYaw = 0f;
 
         [Header("Haptics")]
         public HapticKind haptics = HapticKind.Simulated;
@@ -50,6 +59,9 @@ namespace EmotionalEntity
         ITrackingSource trackingSource;
         IHapticDevice device;
         OperatorPanel panel;
+        StatusBoard board;
+        float statusTimer, logTimer;
+        string lastLoggedKey = "none";
 
         public EntityController Controller { get { return controller; } }
 
@@ -112,7 +124,8 @@ namespace EmotionalEntity
             if (display == DisplayMode.MiddleVR)
             {
                 displayName = "MiddleVR CAVE";
-                min = arenaMin; max = arenaMax; margin = safetyMargin;
+                if (enableSafetyArea) { min = arenaMin; max = arenaMax; margin = safetyMargin; }
+                OperatorKeys.GlobalKeysEnabled = true;
                 WarnIfSystemCenterMoved();
             }
             else
@@ -127,7 +140,12 @@ namespace EmotionalEntity
             panel = gameObject.AddComponent<OperatorPanel>();
             panel.Init(controller, conditions, displayName);
             // In the CAVE the PC's window is a wall the participant sees. Keep the panel off until F1.
-            if (display == DisplayMode.MiddleVR) panel.Visible = false;
+            if (display == DisplayMode.MiddleVR)
+            {
+                panel.Visible = showStatusAtStart;
+                board = new StatusBoard(transform, statusBoardPosition, statusBoardYaw) { Visible = showStatusAtStart };
+                if (!OperatorKeys.GlobalKeysSupported) Debug.LogWarning("[Prototype] Keys read from Windows are not available on this platform.");
+            }
 
             log.Mark(Time.timeAsDouble, "session", "display=" + displayName + " tracking=" + trackingSource.Name +
                 " haptics=" + device.Name + " mode=" + hapticMode);
@@ -168,7 +186,7 @@ namespace EmotionalEntity
                 k = TrackingKind.Simulated;
             }
             if (k == TrackingKind.SceneNodes)
-                return new NodeTracking { HeadNode = headNode, TorsoNode = torsoNode, LeftHandNode = leftHandNode, RightHandNode = rightHandNode };
+                return new NodeTracking { HeadNode = headNode, TorsoNode = torsoNode, LeftHandNode = leftHandNode, RightHandNode = rightHandNode, StaleSeconds = nodeLostAfterSeconds };
             return new SimulatedTracking();
         }
 
@@ -176,21 +194,61 @@ namespace EmotionalEntity
         {
             if (controller == null) return;
             double now = Time.timeAsDouble;
-            if (InputShim.EmergencyStopPressed()) controller.EmergencyStop(now);
-            if (InputShim.ClearStopPressed() && controller.EmergencyStopped) controller.ClearEmergencyStop(now);
-            int c = InputShim.ConditionKeyPressed();
+            if (OperatorKeys.EmergencyStopPressed()) controller.EmergencyStop(now);
+            if (OperatorKeys.ClearStopPressed() && controller.EmergencyStopped) controller.ClearEmergencyStop(now);
+            int c = OperatorKeys.ConditionKeyPressed();
             if (c >= 0 && c < conditions.Length) controller.SetCondition(conditions[c], now);
-            if (InputShim.TouchPressed()) controller.TriggerGesture(GestureType.Touch, panel.SelectedZone);
-            if (InputShim.HugPressed()) controller.TriggerGesture(GestureType.Hug, BodyZone.Chest);
-            if (InputShim.HideEntityPressed())
+            if (OperatorKeys.TouchPressed()) controller.TriggerGesture(GestureType.Touch, panel.SelectedZone);
+            if (OperatorKeys.HugPressed()) controller.TriggerGesture(GestureType.Hug, BodyZone.Chest);
+            if (OperatorKeys.HideEntityPressed())
             {
                 controller.EntityVisible = !controller.EntityVisible;
                 controller.Log.Mark(now, "entity_visible", controller.EntityVisible.ToString());
             }
-            if (rig != null && InputShim.ObserverPressed()) { rig.Observer = !rig.Observer; panel.SetDisplayName(rig.Name); }
+            if (rig != null && OperatorKeys.ObserverPressed()) { rig.Observer = !rig.Observer; panel.SetDisplayName(rig.Name); }
 
             controller.Tick(now, Time.deltaTime);
             if (rig != null) rig.UpdateViewer(controller.Body.HeadPose, controller.Body.TorsoPose);
+
+            if (OperatorKeys.LastKey != lastLoggedKey)
+            {
+                lastLoggedKey = OperatorKeys.LastKey;
+                controller.Log.Mark(now, "operator_key", lastLoggedKey);
+            }
+            if (board != null)
+            {
+                board.Visible = panel.Visible;
+                statusTimer -= Time.unscaledDeltaTime;
+                if (board.Visible && statusTimer <= 0f) { statusTimer = 0.25f; board.SetText(StatusText()); }
+            }
+            if (display == DisplayMode.MiddleVR)
+            {
+                logTimer -= Time.unscaledDeltaTime;
+                if (logTimer <= 0f) { logTimer = 5f; Debug.Log("[Prototype] Status\n" + StatusText()); }
+            }
+        }
+
+        /// <summary>One block of plain text: what the operator needs to see in the CAVE.</summary>
+        string StatusText()
+        {
+            EntityController c = controller;
+            BodyZoneManager b = c.Body;
+            var sb = new System.Text.StringBuilder(400);
+            sb.Append("OPERATOR  (F1 hide)   ").Append(c.Condition.conditionId).Append("   ").Append(c.Brain.State);
+            sb.Append("   contact #").Append(c.Brain.ContactIndex).AppendLine();
+            var nt = trackingSource as NodeTracking;
+            string head = nt != null && !nt.Found(TrackedPoint.Head) ? "NOT FOUND: \"" + headNode + "\"" : b.HeadValid ? "OK" : "LOST (not moving)";
+            sb.Append("Head ").Append(head).Append("  at ").Append(b.Head.ToString("F2")).AppendLine();
+            if (nt != null && !string.IsNullOrEmpty(rightHandNode))
+                sb.Append("Hand \"").Append(rightHandNode).Append("\" ").Append(nt.Found(TrackedPoint.RightHand) ? "found" : "NOT FOUND").AppendLine();
+            sb.Append(!enableSafetyArea ? "Safety area OFF" : c.UserInSafeArea ? "Inside safety area" : "NEAR WALL / OUTSIDE AREA: contacts paused").AppendLine();
+            sb.Append("Next contact ").Append(c.Brain.Scheduler.Running ? (c.Brain.Scheduler.NextTime - Time.timeAsDouble).ToString("0.0") + " s" : "waiting for trigger (" + c.Condition.behavior.trigger + ")").AppendLine();
+            sb.Append("Haptics ").Append(c.Haptics.Mode).Append(": ").Append(c.Haptics.Device.Status).AppendLine();
+            if (c.EmergencyStopped) sb.Append("EMERGENCY STOP  (C to clear)").AppendLine();
+            if (!c.EntityVisible) sb.Append("Entity hidden (V)").AppendLine();
+            sb.Append("Last key: ").Append(OperatorKeys.LastKey).AppendLine();
+            sb.Append("1/2/3 entity  T touch  H hug  V show  Space stop");
+            return sb.ToString();
         }
 
         void OnDestroy()
@@ -198,6 +256,8 @@ namespace EmotionalEntity
             if (device != null) device.Dispose();
             if (trackingSource != null) trackingSource.Dispose();
             if (rig != null) rig.Dispose();
+            if (board != null) board.Dispose();
+            OperatorKeys.GlobalKeysEnabled = false;
             if (visual != null) visual.Dispose();
             if (log != null) log.Dispose();
         }

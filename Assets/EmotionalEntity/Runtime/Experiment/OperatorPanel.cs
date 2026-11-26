@@ -32,7 +32,7 @@ namespace EmotionalEntity
 
         void Update()
         {
-            if (InputShim.TogglePanelPressed()) visible = !visible;
+            if (OperatorKeys.TogglePanelPressed()) visible = !visible;
             if (!walking || ctl == null) return;
             walkTimer -= Time.deltaTime;
             if (walkTimer > 0f) return;
